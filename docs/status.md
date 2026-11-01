@@ -542,6 +542,12 @@ PR #266 added timed hull resizing for the dual sabers' forward jump attack and #
 
 Verification, 01/11/2026, branch `fix/japlus-dual-jump-hull` on top of `main` `90f1d7d8`, Linux x86_64 (Arch, LXC), Rust 1.99.1: tests in [pmove_dual_jump_hull_tests.rs](../crates/sjk-game-jka/src/pmove_dual_jump_hull_tests.rs) at 8/7/4/3 ms command steps cover feet raised only over a player ahead (not over the attacker or an NPC), every window with `dmflags` 256, the stock fixed hull, the #307 landing case on JA+ without a player, and feet put back or a crouch under a ceiling; `dmflags_256_keeps_the_old_collision_on_ja_plus_only` covers the flag. Not verified: a running JA+ server (no capture or live run yet); stock servers are unchanged.
 
+## JA+ stand-up check
+
+This builds on #333 (`dmflags` 256, `old_collision`). On JA+ servers the ducked and the rolling stand-up use the server's check instead of OpenJK's `PM_CanStand` ([pmove_posture.rs](../crates/sjk-game-jka/src/pmove_posture.rs), `may_stand`, `ja_plus_can_stand`). Without `dmflags` 256 the box from the feet to the waist is swept up by the standing height (`PM_CheckFixMaxs`). If the head would hit something, the player stands up moved down by that much when there is room below (in the air, or in water), else stays down. With `dmflags` 256 the original game's check applies: the standing box where the player is must not be all in solid. NPCs and other servers keep the stock check. The rule comes from VisionJK's port of the JA+ 2.4 B7 server module. Not verified against a running JA+ server.
+
+Verification, 01/11/2026, branch `fix/japlus-stand-up` on top of `fix/japlus-dual-jump-hull` (#333), Linux x86_64 (Arch, LXC), Rust 1.99.1: tests in pmove_posture.rs cover standing in the open, standing 10 units lower under a ceiling with room below (stock stays crouched), staying down without room below, and the `dmflags` 256 behaviour. Not verified: a running JA+ server (no capture or live run yet).
+
 ## Equipped saber definitions in client prediction
 
 29/10/2026, `fix/prediction-saber-definitions`, based on `main` `e702b0b1`:

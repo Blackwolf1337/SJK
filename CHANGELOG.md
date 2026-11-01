@@ -35,6 +35,7 @@ Add each release's notes here when it is tagged (docs/sjk.md "Releases").
 - Grand finds in the game's chat look the part: the line starts with the holocron's or kyber crystal's picture, the prize is written in its own rarity colour, and a blade shows small and live; with the chat open, rest the pointer on it to see it large (`debug_find` rehearses one) _(Sol)_
 - The Toy Master's toys: facing one shows the Use prompt by the crosshair, as at a mystery box, saying only "???"; while a toy's show spins, the players around it spin and squish with it (on your screen only, where they really stand and face is unchanged), and a show whose sound you lack says so in the log, its sound heard once a pack bringing it loads _(Sol)_
 - On JA+ servers the dual sabers' forward jump attack no longer sinks you into the floor when nobody is in front: as on the server, your feet only lift to sail over a player ahead _(Blackwolf1337, after JA+)_
+- Standing up from a crouch or a roll under a low ceiling in the air on JA+ servers now matches the server _(Blackwolf1337, after JA+)_
 
 ## 2026.1101.1 (Alpha) | 01/11/2026
 

@@ -1837,6 +1837,7 @@ impl Predictor {
             collision,
             minimums,
             PLAYER_CONTENT_MASK,
+            self.config.ja_plus,
         ) {
             return Bounds {
                 minimums,
@@ -1847,11 +1848,12 @@ impl Predictor {
         if command.up_move < 0 || matches!(self.state.force_hand_extend, 8 | 13 | 14) {
             self.state.movement_flags |= PMF_DUCKED;
         } else if self.state.movement_flags & PMF_DUCKED != 0 {
-            if crate::pmove_posture::can_stand(
-                &self.state,
+            if crate::pmove_posture::may_stand(
+                &mut self.state,
                 collision,
                 minimums,
                 PLAYER_CONTENT_MASK,
+                self.config.ja_plus,
             ) {
                 self.state.movement_flags &= !PMF_DUCKED;
             }

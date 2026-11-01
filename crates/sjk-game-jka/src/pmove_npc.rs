@@ -94,11 +94,13 @@ impl Predictor {
             minimums[2] = MINS_Z;
         }
         let (width, depth) = (maximums[0], maximums[1]);
+        // NPCs keep the stock stand-up check.
         if let Some(top) = crate::pmove_roll::bounds_height(
             &mut self.state,
             collision,
             minimums,
             PLAYER_CONTENT_MASK,
+            crate::pmove_japlus::JaPlusRules::default(),
         ) {
             return Bounds {
                 minimums,

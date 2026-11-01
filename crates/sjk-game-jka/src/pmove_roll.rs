@@ -260,6 +260,7 @@ pub(crate) fn bounds_height(
     collision: &impl MovementCollision,
     minimums: [f32; 3],
     content_mask: u32,
+    ja_plus: crate::pmove_japlus::JaPlusRules,
 ) -> Option<f32> {
     // A get-up roll forwards or back is a "kicking" animation (`BG_KickingAnim`): it
     // is not the rolling hull, and stands up as any crouch would.
@@ -272,7 +273,7 @@ pub(crate) fn bounds_height(
     if state.movement_flags & PMF_ROLLING == 0 {
         return None;
     }
-    if !crate::pmove_posture::can_stand(state, collision, minimums, content_mask) {
+    if !crate::pmove_posture::may_stand(state, collision, minimums, content_mask, ja_plus) {
         state.view_height = DEFAULT_VIEW_HEIGHT;
         Some(state.crouching_height)
     } else {

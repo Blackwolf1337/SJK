@@ -283,7 +283,7 @@ Stock and other servers, SJK's dedicated server included, keep the stock rules.
 | Melee buttons | Every JA+ server | With melee, an attack pressed with the holdable button is not cancelled |
 | Taunts | Every JA+ server | Meditation keeps the player in place but the view free; other taunts leave movement and view free |
 | Staff kick | Every JA+ server | A staff's alternate attack standing still is a front kick |
-| Melee kicks | Every JA+ server | JA+ plays its own kicks server-side (melee's spin and back kicks in place of the stock W+A and W+D kicks, the jumping back kick, the backflip kick and the flip stab); the kicker is held still with the view free. A kiss, a ledge, a get-up, a stab or a backflip kick taken holds the player and the view (JoF EternalJK `bg_pmove.c:12470-12498`, `SVMOD_JAPLUS`, at bd5e202). The client predicts the stock kick until the server's kick arrives, as JoF EternalJK does |
+| Melee kicks | Every JA+ server | JA+ plays its own kicks server-side (melee's spin and back kicks in place of the stock W+A and W+D kicks, the jumping back kick and the flip stab); the kicker is held still with the view free. A backflip kick that misses (`BOTH_JUMP_BACKFLIP_ATCK_MISSED`, legs or torso) runs the kicker on forward instead: forward move 127, side and up moves taken away, view free. A kiss, a ledge, a get-up, a stab or a backflip kick taken holds the player and the view (JoF EternalJK `bg_pmove.c:12470-12498`, `SVMOD_JAPLUS`, at bd5e202). The client predicts the stock kick until the server's kick arrives, as JoF EternalJK does |
 
 Not predicted: the options EternalJK never reads outside its `serverconfig`
 listing (single-player attacks, new DFA, model scale, kata, auto replier, ledge

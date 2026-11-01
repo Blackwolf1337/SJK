@@ -540,6 +540,12 @@ x64. Live respawn behavior against an OpenJK server remains unverified.
 
 PR #266's timed dual-attack hull resizing was rolled back in #307. An original JA+ 2.4 B7 server stayed grounded while prediction shrank the hull and acquired downward velocity (about 254 units/s in the captured case). The fixed -24-unit foot minimum is restored. Timed hull resizing remains unsupported.
 
+## JA+ missed combo kick
+
+On JA+ servers a backflip kick (`BOTH_JUMP_BACKFLIP_ATCK_MISSED`, JA+'s combo kick) that hit nobody no longer holds the kicker still in prediction. The JA+ module lets the kicker run on forward instead: forward move 127, side and up moves taken away, view free. The legs or the torso animation counts ([pmove_input_freeze.rs](../crates/sjk-game-jka/src/pmove_input_freeze.rs), `combo_kick_missed`). The rule comes from VisionJK's port of the JA+ 2.4 B7 server module. The other JA+ kicks still hold the kicker still, and stock servers do not know the animation. Not verified against a running JA+ server.
+
+Verification, 01/11/2026, branch `fix/japlus-combo-kick-missed` on top of `main` `071588b3`, Linux x86_64 (Arch, LXC), Rust 1.99.1: `ja_plus_missed_combo_kick_runs_on_forward` (animation on the legs, the torso or both, at 8/7/4/3 ms command steps) and the updated `ja_plus_melee_kicks_hold_the_kicker_still` in pmove_japlus.rs. Not verified: a running JA+ server (no capture or live run yet).
+
 ## Equipped saber definitions in client prediction
 
 29/10/2026, `fix/prediction-saber-definitions`, based on `main` `e702b0b1`:

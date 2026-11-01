@@ -144,6 +144,13 @@ pub(crate) fn apply(
         lock_view = true;
     } else if !stiffened && state.held_by_client != 0 {
         stiffened = true;
+    } else if !stiffened && ja_plus.enabled && combo_kick_missed(state) {
+        // The JA+ 2.4 B7 game module (`PmoveSingle`, as VisionJK's port of it has it):
+        // after a missed backflip kick the kicker runs on forward, steering left, right
+        // and up taken away, ahead of the kick hold below.
+        command.forward_move = 127;
+        command.right_move = 0;
+        command.up_move = 0;
     } else if !stiffened && (kick_move(state.saber_move) || kicking_animation(state.legs_anim)) {
         stiffened = true;
     } else if !stiffened && grapple_animation(state.torso_anim) {
@@ -451,11 +458,16 @@ fn japlus_animation_freeze(
                 | "BOTH_JUMP_BACKKICK_SPIN"
                 | "BOTH_JUMP_BACKFLIP_ATCK"
                 | "BOTH_FLIP_STAB"
-                | "BOTH_JUMP_BACKFLIP_ATCK_MISSED"
         )
     ) {
         *stiffened = true;
     }
+}
+
+/// A JA+ backflip kick that found nobody, on the legs or the torso.
+fn combo_kick_missed(state: &MovementState) -> bool {
+    animation_is(state.legs_anim, "BOTH_JUMP_BACKFLIP_ATCK_MISSED")
+        || animation_is(state.torso_anim, "BOTH_JUMP_BACKFLIP_ATCK_MISSED")
 }
 
 fn animation_is(animation: u16, expected: &str) -> bool {

@@ -256,7 +256,6 @@ mod tests {
             "BOTH_JUMP_BACKKICK_SPIN",
             "BOTH_JUMP_BACKFLIP_ATCK",
             "BOTH_FLIP_STAB",
-            "BOTH_JUMP_BACKFLIP_ATCK_MISSED",
         ] {
             let state = crate::pmove::MovementState {
                 legs_anim: animation(kick),
@@ -276,6 +275,55 @@ mod tests {
                 japlus_state.delta_angles, state.delta_angles,
                 "{kick}: view free"
             );
+        }
+    }
+
+    #[test]
+    fn ja_plus_missed_combo_kick_runs_on_forward() {
+        let missed = animation("BOTH_JUMP_BACKFLIP_ATCK_MISSED");
+        let stand = animation("BOTH_STAND1");
+        for (legs, torso) in [(missed, missed), (missed, stand), (stand, missed)] {
+            for step in [8, 7, 4, 3] {
+                let run = |rules| {
+                    let mut state = crate::pmove::MovementState {
+                        legs_anim: legs,
+                        torso_anim: torso,
+                        legs_timer: 600,
+                        torso_timer: 600,
+                        ground_entity_number: 1_022,
+                        ..Default::default()
+                    };
+                    let mut command = sjk_protocol::UserCommand {
+                        server_time: 1_000,
+                        right_move: 127,
+                        up_move: 127,
+                        angles: [0, 16_384, 0],
+                        ..Default::default()
+                    };
+                    crate::pmove_input_freeze::apply(
+                        &mut state,
+                        &mut command,
+                        step,
+                        &Open,
+                        None,
+                        rules,
+                    );
+                    (state.delta_angles, command)
+                };
+                let (_, stock) = run(JaPlusRules::default());
+                assert_eq!(
+                    (stock.forward_move, stock.right_move, stock.up_move),
+                    (0, 127, 127),
+                    "stock does not know the kick"
+                );
+                let (delta_angles, japlus) = run(ja_plus());
+                assert_eq!(
+                    (japlus.forward_move, japlus.right_move, japlus.up_move),
+                    (127, 0, 0),
+                    "{step} ms: JA+ runs on forward"
+                );
+                assert_eq!(delta_angles, [0; 3], "{step} ms: view free");
+            }
         }
     }
 

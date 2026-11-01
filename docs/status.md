@@ -540,6 +540,12 @@ x64. Live respawn behavior against an OpenJK server remains unverified.
 
 PR #266's timed dual-attack hull resizing was rolled back in #307. An original JA+ 2.4 B7 server stayed grounded while prediction shrank the hull and acquired downward velocity (about 254 units/s in the captured case). The fixed -24-unit foot minimum is restored. Timed hull resizing remains unsupported.
 
+## JA+ roll start
+
+On JA+ servers a crouched player running rolls when the squared speed is at least 30000 at every `jp_fixRoll` level (stock needs 200*200 = 40000). At `jp_fixRoll` 1, the default of JA+ 2.4 B7, a run while Force gripping also rolls at any speed; at levels 2 and 3 any run rolls ([pmove_roll.rs](../crates/sjk-game-jka/src/pmove_roll.rs), `RollRules::ja_plus`). The rule comes from VisionJK's port of the JA+ 2.4 B7 server module. TaystJK and jaPRO servers keep their existing fix-roll entry (level 1: 30000 without the grip clause) and stock servers keep 40000. Not verified against a running JA+ server.
+
+Verification, 01/11/2026, branch `fix/japlus-roll-start` on top of `main` `071588b3`, Linux x86_64 (Arch, LXC), Rust 1.99.1: `only_ja_plus_selects_its_roll_entry`, `ja_plus_rolls_from_30000_at_every_fix_level` and `other_servers_keep_their_roll_entry` in pmove_roll.rs, each case at 8/7/4/3 ms command steps. Not verified: a running JA+ server (no capture or live run yet).
+
 ## Equipped saber definitions in client prediction
 
 29/10/2026, `fix/prediction-saber-definitions`, based on `main` `e702b0b1`:

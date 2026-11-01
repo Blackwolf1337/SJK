@@ -40,7 +40,17 @@ pub struct RollRules {
     pub saber_forbids_rolls: bool,
     /// Legacy gametype used by `BG_HasYsalamiri` for CTY flags.
     pub gametype: u8,
+    /// The server runs JA+, whose roll from a crouch has its own entry rule
+    /// ([`ja_plus_roll_entry`]).
+    pub ja_plus: bool,
 }
+
+/// `FP_GRIP` in `forcePowersActive`.
+const FP_GRIP: u32 = 1 << 6;
+
+/// The squared speed a run needs to roll from a crouch on JA+, at every `jp_fixRoll`
+/// level (stock: 200 * 200).
+const JA_PLUS_ROLL_SPEED_SQUARED: f32 = 30_000.0;
 
 impl RollRules {
     /// Derive the highest-precedence FIXROLL mode from a parsed dialect.
@@ -65,6 +75,7 @@ impl RollRules {
             ServerDialect::BaseJka | ServerDialect::Unknown { .. } => [false; 3],
         };
         Self {
+            ja_plus: matches!(dialect, ServerDialect::JaPlus { .. }),
             fix_roll: if bits[2] {
                 3
             } else if bits[1] {
@@ -163,7 +174,9 @@ pub(crate) fn roll_from_crouch(
     } else {
         40_000.0
     };
-    let eligible = if rules.fix_roll > 1 {
+    let eligible = if rules.ja_plus {
+        ja_plus_roll_entry(state, rules.fix_roll, speed_squared)
+    } else if rules.fix_roll > 1 {
         crate::pmove_roll_anim::running(state.legs_anim) || can_roll_from_soulcal(state)
     } else {
         crate::pmove_roll_anim::running(state.legs_anim) && speed_squared >= threshold
@@ -189,6 +202,18 @@ pub(crate) fn roll_from_crouch(
     state.view_height = DEFAULT_VIEW_HEIGHT;
     true
 }
+/// The roll entry of the JA+ 2.4 B7 game module's `PM_Footsteps` (as VisionJK's port of
+/// that module has it): a run rolls at 30000 squared speed whatever
+/// `jp_fixRoll` says, fix 1 also rolls from any run while gripping, fix 2 and above from
+/// any run. The Soul Calibur kick may roll as on stock.
+fn ja_plus_roll_entry(state: &MovementState, fix_roll: u8, speed_squared: f32) -> bool {
+    let running = crate::pmove_roll_anim::running(state.legs_anim)
+        && (speed_squared >= JA_PLUS_ROLL_SPEED_SQUARED
+            || fix_roll >= 2
+            || fix_roll == 1 && state.force_powers_active & FP_GRIP != 0);
+    running || can_roll_from_soulcal(state)
+}
+
 /// `PM_TryRoll` including the stock 64-unit clearance trace.
 pub(crate) fn try_roll(
     state: &mut MovementState,
@@ -336,4 +361,107 @@ fn yaw_axes(yaw: f32) -> (Vec3, Vec3) {
     // `AngleVectors` returns JKA's negative-local-Y right axis, the same
     // convention used by `PM_WalkMove` (`bg_pmove.c:3624-3627`).
     (Vec3::new(cosine, sine, 0.0), Vec3::new(sine, -cosine, 0.0))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pmove::MovementTrace;
+    use crate::pmove_anim::{AnimationLengthTable, AnimationTiming};
+    use sjk_protocol::InfoString;
+
+    /// No world: every trace misses.
+    struct Open;
+    impl MovementCollision for Open {
+        fn trace(
+            &self,
+            _: [f32; 3],
+            _: [f32; 3],
+            _: [f32; 3],
+            end: [f32; 3],
+            _: u32,
+        ) -> MovementTrace {
+            MovementTrace::miss(end)
+        }
+    }
+
+    fn rules(serverinfo: &str) -> RollRules {
+        RollRules::from_dialect(
+            &ServerProfile::from_server_info(&InfoString::parse(serverinfo).unwrap()).dialect,
+        )
+    }
+
+    /// A crouched saber player running forward at `speed_squared`, optionally gripping,
+    /// tries to roll at each command step.
+    fn rolls(rules: RollRules, speed_squared: f32, gripping: bool) -> bool {
+        // Synthetic lengths, not retail animation data.
+        let lengths = AnimationLengthTable::new(vec![
+            AnimationTiming {
+                frame_count: 10,
+                frame_lerp_ms: 50
+            };
+            BOTH_ROLL_R as usize + 1
+        ]);
+        let results = [8, 7, 4, 3].map(|step| {
+            let mut state = MovementState {
+                weapon: WP_SABER,
+                legs_anim: crate::legacy_animation_index("BOTH_RUN1").unwrap() as u16,
+                movement_flags: PMF_DUCKED,
+                ground_entity_number: crate::pmove::ENTITY_NUMBER_WORLD,
+                velocity: [speed_squared.sqrt(), 0.0, 0.0],
+                force_powers_active: if gripping { FP_GRIP } else { 0 },
+                crouching_height: 16.0,
+                ..MovementState::default()
+            };
+            let command = UserCommand {
+                server_time: step,
+                forward_move: 127,
+                ..UserCommand::default()
+            };
+            roll_from_crouch(&mut state, &command, &Open, &lengths, rules)
+        });
+        assert!(results.iter().all(|&rolled| rolled == results[0]));
+        results[0]
+    }
+
+    #[test]
+    fn only_ja_plus_selects_its_roll_entry() {
+        assert!(rules(r"\gamename\JA+ Mod v2.4 B7\jp_cinfo\196819").ja_plus);
+        assert!(!rules(r"\gamename\basejka").ja_plus);
+        assert!(!rules(r"\gamename\TaystJK\jp_cinfo\2").ja_plus);
+    }
+
+    #[test]
+    fn ja_plus_rolls_from_30000_at_every_fix_level() {
+        let ja_plus = |fix_roll| RollRules {
+            fix_roll,
+            ja_plus: true,
+            ..RollRules::default()
+        };
+        // jp_fixRoll 0: stock needs 40000, JA+ 30000.
+        assert!(rolls(ja_plus(0), 35_000.0, false));
+        assert!(!rolls(ja_plus(0), 29_000.0, false));
+        assert!(!rolls(ja_plus(0), 29_000.0, true));
+        // jp_fixRoll 1 (JA+ 2.4 B7's default): also from a slower run while gripping.
+        assert!(rolls(ja_plus(1), 30_000.0, false));
+        assert!(!rolls(ja_plus(1), 29_000.0, false));
+        assert!(rolls(ja_plus(1), 100.0, true));
+        // jp_fixRoll 2 and 3: from any run.
+        assert!(rolls(ja_plus(2), 100.0, false));
+        assert!(rolls(ja_plus(3), 100.0, false));
+    }
+
+    #[test]
+    fn other_servers_keep_their_roll_entry() {
+        let other = |fix_roll| RollRules {
+            fix_roll,
+            ..RollRules::default()
+        };
+        assert!(!rolls(other(0), 35_000.0, false));
+        assert!(rolls(other(0), 40_000.0, false));
+        // TaystJK's fix 1 keeps 30000 without the grip clause.
+        assert!(rolls(other(1), 30_000.0, false));
+        assert!(!rolls(other(1), 100.0, true));
+        assert!(rolls(other(2), 100.0, false));
+    }
 }
